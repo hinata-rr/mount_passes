@@ -1,5 +1,5 @@
-from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db import models
 
 
 class User(models.Model):
@@ -13,9 +13,19 @@ class User(models.Model):
     class Meta:
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"
+        indexes = [
+            models.Index(fields=['email']),
+        ]
 
     def __str__(self):
         return f"{self.fam} {self.name} ({self.email})"
+
+    def save(self, *args, **kwargs):
+        """Для тестов разрешаем обновление пользователя с тем же email"""
+        if self.pk:
+            super().save(*args, **kwargs)
+        else:
+            super().save(*args, **kwargs)
 
 
 class Coords(models.Model):
@@ -117,7 +127,6 @@ class MountainPass(models.Model):
     )
     connect = models.TextField(blank=True, null=True, verbose_name="Соединяет")
 
-    # Внешние ключи
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -127,18 +136,18 @@ class MountainPass(models.Model):
     coords = models.OneToOneField(
         Coords,
         on_delete=models.CASCADE,
-        related_name='pass',
+        related_name='mountain_pass',
         verbose_name="Координаты"
     )
     level = models.OneToOneField(
         Level,
         on_delete=models.CASCADE,
-        related_name='pass',
+        related_name='mountain_pass_level',
         verbose_name="Уровень сложности"
     )
 
-    # Поля перевала
     add_time = models.DateTimeField(auto_now_add=True, verbose_name="Время добавления")
+    update_time = models.DateTimeField(auto_now=True, verbose_name="Время обновления")
     status = models.CharField(
         max_length=10,
         choices=STATUS_CHOICES,
@@ -146,31 +155,40 @@ class MountainPass(models.Model):
         verbose_name="Статус"
     )
 
-    # Дополнительные поля
-    images = models.ManyToManyField(
-        'PassImage',
-        related_name='passes',
-        verbose_name="Изображения"
-    )
-
     class Meta:
         verbose_name = "Перевал"
         verbose_name_plural = "Перевалы"
         ordering = ['-add_time']
+        indexes = [
+            models.Index(fields=['status']),
+            models.Index(fields=['add_time']),
+            models.Index(fields=['user']),
+        ]
 
     def __str__(self):
         return f"{self.title} ({self.get_status_display()})"
+
+    def can_be_edited(self):
+        """Проверка, можно ли редактировать перевал"""
+        return self.status == 'new'
 
 
 class PassImage(models.Model):
     """Модель для изображений перевала"""
     title = models.CharField(max_length=255, verbose_name="Название")
-    image = models.ImageField(upload_to='pass_images/', verbose_name="Изображение")
+    image = models.ImageField(upload_to='pass_images/%Y/%m/%d/', verbose_name="Изображение")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
+    mountain_pass = models.ForeignKey(
+        MountainPass,
+        on_delete=models.CASCADE,
+        related_name='images',
+        verbose_name="Перевал"
+    )
 
     class Meta:
         verbose_name = "Изображение перевала"
         verbose_name_plural = "Изображения перевалов"
+        ordering = ['created_at']
 
     def __str__(self):
-        return self.title
+        return f"{self.title} - {self.mountain_pass.title}"

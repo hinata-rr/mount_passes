@@ -29,4 +29,7 @@ class MountainPassAdmin(admin.ModelAdmin):
     list_filter = ('status', 'add_time')
     search_fields = ('title', 'beauty_title', 'user__email')
     readonly_fields = ('add_time',)
-    filter_horizontal = ('images',)
+
+    def images_list(self, obj):
+        return ", ".join([img.title for img in obj.images.all()])
+    images_list.short_description = "Изображения"

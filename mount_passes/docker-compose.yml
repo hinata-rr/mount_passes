@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: mountain_passes
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      FSTR_DB_HOST: db
+      FSTR_DB_PORT: 5432
+      FSTR_DB_NAME: mountain_passes
+      FSTR_DB_LOGIN: postgres
+      FSTR_DB_PASS: password
+      SECRET_KEY: django-insecure-dev-key-change-me-in-production
+      DEBUG: "True"
+
+volumes:
+  postgres_data:
